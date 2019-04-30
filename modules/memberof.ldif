@@ -2,8 +2,7 @@ dn: cn=module,cn=config
 cn: module
 objectClass: olcModuleList
 objectClass: top
-olcModulePath: /usr/lib/ldap
-olcModuleLoad: memberof.la
+olcModuleLoad: memberof.so
 
 dn: olcOverlay={0}memberof,olcDatabase={1}mdb,cn=config
 objectClass: olcConfig
@@ -21,8 +20,7 @@ dn: cn=module,cn=config
 cn: module
 objectClass: olcModuleList
 objectClass: top
-olcModulePath: /usr/lib/ldap
-olcModuleLoad: refint.la
+olcModuleLoad: refint.so
 
 dn: olcOverlay={1}refint,olcDatabase={1}mdb,cn=config
 objectClass: olcConfig
