@@ -6,3 +6,7 @@ o: %ORGANISATION_NAME%
 dn: ou=Users,%SUFFIX%
 objectClass: organizationalUnit
 ou: Users
+
+dn: ou=Groups,%SUFFIX%
+objectClass: organizationalUnit
+ou: Groups
