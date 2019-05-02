@@ -11,8 +11,9 @@ RUN  mkdir -p /etc/openldap/modules \
   && mkdir -p /run/openldap \
   && mkdir -p /ldif
 COPY scripts/* /etc/openldap/
-COPY modules/* /etc/openldap/modules/
-COPY modules/* /ldif/
+COPY modules/* /ldif/modules/
+COPY ldif/* /ldif/
+COPY schema/* /ldif/schema/
 
 COPY docker-entrypoint.sh /
 RUN chmod +xr /docker-entrypoint.sh

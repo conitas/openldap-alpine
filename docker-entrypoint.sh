@@ -63,7 +63,7 @@ if [ ! -d "/etc/openldap/slapd.d" ]; then
     rm $SLAPD_CONF
 
     # add any scripts in ldif
-    for l in /ldif/*; do
+    for l in /ldif/modules/* /ldif/* /ldif/schema/* ; do
       case "$l" in
         *.ldif) echo "ENTRYPOINT: adding $l";
                 envsubst < "$l" > "/tmp/out.ldif";
@@ -77,6 +77,7 @@ if [ ! -d "/etc/openldap/slapd.d" ]; then
 
 
 fi
+
 if [ "$LDAPS" = true ]; then
   echo "Starting LDAPS"
   slapd -d "$LOG_LEVEL" -h "ldaps:///"
