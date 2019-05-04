@@ -1,4 +1,5 @@
 dn: cn=module,cn=config
+changetype: add
 objectClass: olcModuleList
 cn: module
 olcModuleLoad: ppolicy.so

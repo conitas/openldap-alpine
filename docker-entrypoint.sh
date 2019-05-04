@@ -4,9 +4,11 @@ _escurl() { echo $1 | sed 's|/|%2F|g' ;}
 _envsubst() { envsubst < $1 > /tmp/subst.ldif;}
 
 host=$(hostname)
-
-if [[ ! -d /etc/openldap/slapd.d ]]; then
+SLAPD_CONF_DIR=/etc/openldap/slapd.d
+SLAPD_IPC_SOCKET=/run/openldap/ldapi
+if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
 	FIRST_START=1
+	DB_DUMP_FILE=/ldap/dump/dbdump.ldif
 	SLAPD_CONF=/etc/openldap/slapd.conf
 	if [[ ! -f ${SLAPD_CONF} ]];then
 	 touch ${SLAPD_CONF}
@@ -14,9 +16,8 @@ if [[ ! -d /etc/openldap/slapd.d ]]; then
 	mkdir -p /run/openldap/
 
 	echo "Configuring OpenLDAP via slapd.d"
-	ls -al /etc/openldap/slapd.d/
-	mkdir -p /etc/openldap/slapd.d
-	chmod -R 750 /etc/openldap/slapd.d
+	mkdir -p ${SLAPD_CONF_DIR}
+	chmod -R 750 ${SLAPD_CONF_DIR}
 	mkdir -p /var/lib/openldap/openldap-data
     chmod -R 750 /var/lib/openldap/openldap-data
 
@@ -85,13 +86,13 @@ directory  /var/lib/openldap/openldap-data
 
 
 	echo "Generating configuration"
-	slaptest -f ${SLAPD_CONF} -F /etc/openldap/slapd.d -d ${SLAPD_LOG_LEVEL}
-    chown -R ldap:ldap /etc/openldap/slapd.d
+	slaptest -f ${SLAPD_CONF} -F ${SLAPD_CONF_DIR} -d ${SLAPD_LOG_LEVEL}
+    chown -R ldap:ldap ${SLAPD_CONF_DIR}
     chown -R ldap:ldap /run/openldap/
     chown -R ldap:ldap /var/lib/openldap/openldap-data
 
     echo "Starting slapd for first configuration"
-    slapd -h "ldap:/// ldapi://$(_escurl /run/openldap/ldapi)" -u ldap -g ldap -F /etc/openldap/slapd.d -d ${SLAPD_LOG_LEVEL} &
+    slapd -h "ldap:/// ldapi://$(_escurl ${SLAPD_IPC_SOCKET})" -u ldap -g ldap -F ${SLAPD_CONF_DIR} -d ${SLAPD_LOG_LEVEL} &
     _PID=$!
 
 	# handle race condition
@@ -99,7 +100,7 @@ directory  /var/lib/openldap/openldap-data
 	let i=0
 	while [[ ${i} -lt 60 ]]; do
 		printf "."
-		ldapsearch -Y EXTERNAL -H ldapi://$(_escurl /run/openldap/ldapi) -s base -b '' >/dev/null 2>&1
+		ldapsearch -Y EXTERNAL -H ldapi://$(_escurl ${SLAPD_IPC_SOCKET}) -s base -b '' >/dev/null 2>&1
 		#ldapsearch -x -H ldap:/// -s base -b '' >/dev/null 2>&1
 		test $? -eq 0 && break
 		sleep 1
@@ -116,7 +117,7 @@ directory  /var/lib/openldap/openldap-data
 		echo "> $f"
 		_envsubst ${f}
 		#ldapmodify -x -H ldap://localhost -w ${SLAPD_ROOTPW} -D ${SLAPD_ROOTDN} -f /tmp/subst.ldif
-		ldapmodify -Y EXTERNAL -H ldapi://$(_escurl /run/openldap/ldapi) -f /tmp/subst.ldif
+		ldapmodify -Y EXTERNAL -H ldapi://$(_escurl ${SLAPD_IPC_SOCKET}) -f /tmp/subst.ldif
 	done
 
 	if [[ -d /ldap/userldif ]] ; then
@@ -125,20 +126,28 @@ directory  /var/lib/openldap/openldap-data
 			echo "> $f"
 			_envsubst ${f}
 			#ldapmodify -x -H ldap://localhost -w ${SLAPD_ROOTPW} -D ${SLAPD_ROOTDN} -f $f
-			ldapmodify -Y EXTERNAL -H ldapi://$(_escurl /run/openldap/ldapi) -f $f
+			ldapmodify -Y EXTERNAL -H ldapi://$(_escurl ${SLAPD_IPC_SOCKET}) -f /tmp/subst.ldif
 		done
 	fi
 	echo "stopping server ${_PID}"
     kill -SIGTERM ${_PID}
+    sleep 2
+    if [[ -f "${DB_DUMP_FILE}" ]]; then
+        echo "${DB_DUMP_FILE} found, restore DB from file..."
+        _envsubst ${DB_DUMP_FILE}
+        slapadd -l /tmp/subst.ldif -F ${SLAPD_CONF_DIR}
+        restore_state=$?
+        echo "restore finished with code ${restore_state}"
 
+    fi
 fi
 
 if [[  -f "${SSL_KEY}"  ]] ; then
     echo "Starting LDAPS server..."
-    slapd -h "ldaps:/// ldapi://$(_escurl /run/openldap/ldapi)"   -F /etc/openldap/slapd.d -u ldap -g ldap -d "${SLAPD_LOG_LEVEL}"
+    slapd -h "ldaps:/// ldapi://$(_escurl ${SLAPD_IPC_SOCKET})"   -F ${SLAPD_CONF_DIR} -u ldap -g ldap -d "${SLAPD_LOG_LEVEL}"
 else
     echo "Starting LDAP server..."
-    slapd -h "ldap:/// ldapi://$(_escurl /run/openldap/ldapi)"  -F /etc/openldap/slapd.d -u ldap -g ldap -d "${SLAPD_LOG_LEVEL}"
+    slapd -h "ldap:/// ldapi://$(_escurl ${SLAPD_IPC_SOCKET})"  -F ${SLAPD_CONF_DIR} -u ldap -g ldap -d "${SLAPD_LOG_LEVEL}"
 fi
 
 exec "$@"

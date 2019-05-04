@@ -1,4 +1,5 @@
 dn: cn=module,cn=config
+changetype: add
 cn: module
 objectClass: olcModuleList
 objectClass: top
@@ -18,6 +19,7 @@ olcMemberOfMemberAD: member
 olcMemberOfMemberOfAD: memberOf
 
 dn: cn=module,cn=config
+changetype: add
 cn: module
 objectClass: olcModuleList
 objectClass: top
