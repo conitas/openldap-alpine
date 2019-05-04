@@ -6,6 +6,7 @@ olcModuleLoad: memberof.so
 
 dn: olcOverlay=memberof,olcDatabase={1}mdb,cn=config
 objectClass: olcConfig
+changetype: add
 objectClass: olcMemberOf
 objectClass: olcOverlayConfig
 objectClass: top
@@ -23,6 +24,7 @@ objectClass: top
 olcModuleLoad: refint.so
 
 dn: olcOverlay=refint,olcDatabase={1}mdb,cn=config
+changetype: add
 objectClass: olcConfig
 objectClass: olcOverlayConfig
 objectClass: olcRefintConfig
