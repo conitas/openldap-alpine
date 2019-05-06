@@ -8,6 +8,7 @@ services:
       context: .
     ports:
       - 8389:389
+      - 8636:636
 #    volumes:
 #     - ldap_data:/var/lib/openldap/openldap-data
     env_file:

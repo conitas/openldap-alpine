@@ -1,9 +1,10 @@
 #!/bin/sh
 
 _escurl() { echo $1 | sed 's|/|%2F|g' ;}
-_envsubst() { envsubst < $1 > /tmp/subst.ldif;}
+_envsubst() { envsubst < $1 > ${SUBST_FILE}; echo ${SUBST_FILE} ; }
 
 host=$(hostname)
+SUBST_FILE=/tmp/subst.ldif
 SLAPD_CONF_DIR=/etc/openldap/slapd.d
 SLAPD_IPC_SOCKET=/run/openldap/ldapi
 if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
@@ -35,7 +36,6 @@ if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
 
 	rootpw_hash=`slappasswd -o module-load=pw-pbkdf2.so -h {PBKDF2-SHA512} -s "${SLAPD_ROOTPW}"`
 
-    ls -al $SLAPD_CONF
 	# builtin schema
 	cat <<-EOF > "$SLAPD_CONF"
 	include /etc/openldap/schema/core.schema
@@ -52,13 +52,15 @@ if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
 		done
 	fi
 
-    if [[ -d "/ldap/pki" ]]  &&  [[ "$(ls -A '/ldap/pki')" ]];then
-        CA _CERT=/ldap/pki/ca_cert.pem
+    if [[ -d "/ldap/pki" ]]  &&  [[ "$(ls -A '/ldap/pki')" ]]; then
+        CA_CERT=/ldap/pki/ca_cert.pem
         SSL_KEY=/ldap/pki/key.pem
         SSL_CERT=/ldap/pki/cert.pem
 
         # user-provided tls certs
-        echo "TLSCACertificateFile ${CA_CERT}" >>  "$SLAPD_CONF"
+        if [[ -f ${CA_CERT} ]]; then
+            echo "TLSCACertificateFile ${CA_CERT}" >>  "$SLAPD_CONF"
+        fi
         echo "TLSCertificateFile ${SSL_CERT}" >>  "$SLAPD_CONF"
         echo "TLSCertificateKeyFile ${SSL_KEY}" >>  "$SLAPD_CONF"
         echo "TLSCipherSuite HIGH:-SSLv2:-SSLv3" >>  "$SLAPD_CONF"
@@ -77,19 +79,30 @@ access to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth 
 database mdb
 access to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn.base="$SLAPD_ROOTDN" manage by * none
 maxsize 1073741824
-suffix "$SLAPD_SUFFIX"
-rootdn "$SLAPD_ROOTDN"
-rootpw $rootpw_hash
+suffix "${SLAPD_SUFFIX}"
+rootdn "${SLAPD_ROOTDN}"
+rootpw ${rootpw_hash}
 password-hash {PBKDF2-SHA512}
 directory  /var/lib/openldap/openldap-data
 	EOF
 
 
+   cat <<-EOF > "${SLAPD_CONF_DIR}/domain.ldif"
+dn: ${SLAPD_SUFFIX}
+dc: ${SLAPD_DOMAIN}
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: ${SLAPD_ORGANIZATION}
+	EOF
+
 	echo "Generating configuration"
 	slaptest -f ${SLAPD_CONF} -F ${SLAPD_CONF_DIR} -d ${SLAPD_LOG_LEVEL}
+    slapadd  -c -F ${SLAPD_CONF_DIR}  -l "${SLAPD_CONF_DIR}/domain.ldif" -n1
     chown -R ldap:ldap ${SLAPD_CONF_DIR}
     chown -R ldap:ldap /run/openldap/
     chown -R ldap:ldap /var/lib/openldap/openldap-data
+
 
     echo "Starting slapd for first configuration"
     slapd -h "ldap:/// ldapi://$(_escurl ${SLAPD_IPC_SOCKET})" -u ldap -g ldap -F ${SLAPD_CONF_DIR} -d ${SLAPD_LOG_LEVEL} &
@@ -115,27 +128,27 @@ directory  /var/lib/openldap/openldap-data
 	echo "Adding additional config from /ldap/ldif/*.ldif"
 	for f in /ldap/ldif/*.ldif ; do
 		echo "> $f"
-		_envsubst ${f}
-		#ldapmodify -x -H ldap://localhost -w ${SLAPD_ROOTPW} -D ${SLAPD_ROOTDN} -f /tmp/subst.ldif
-		ldapmodify -Y EXTERNAL -H ldapi://$(_escurl ${SLAPD_IPC_SOCKET}) -f /tmp/subst.ldif
+		#ldapmodify -x -H ldap://localhost -w ${SLAPD_ROOTPW} -D ${SLAPD_ROOTDN} -f `_envsubst ${f}` -c -d "${LDAPADD_DEBUG_LEVEL}"
+		ldapmodify -Y EXTERNAL -H ldapi://$(_escurl ${SLAPD_IPC_SOCKET}) -f `_envsubst ${f}` -c -d "${LDAPADD_DEBUG_LEVEL}"
 	done
 
 	if [[ -d /ldap/userldif ]] ; then
 		echo "Adding user config from /ldap/userldif/*.ldif"
 		for f in /ldap/userldif/*.ldif ; do
 			echo "> $f"
-			_envsubst ${f}
-			#ldapmodify -x -H ldap://localhost -w ${SLAPD_ROOTPW} -D ${SLAPD_ROOTDN} -f $f
-			ldapmodify -Y EXTERNAL -H ldapi://$(_escurl ${SLAPD_IPC_SOCKET}) -f /tmp/subst.ldif
+			#ldapmodify -x -H ldap://localhost -w ${SLAPD_ROOTPW} -D ${SLAPD_ROOTDN} -f `_envsubst ${f}` -c -d "${LDAPADD_DEBUG_LEVEL}"
+			ldapmodify -Y EXTERNAL -H ldapi://$(_escurl ${SLAPD_IPC_SOCKET}) -f `_envsubst ${f}` -c -d "${LDAPADD_DEBUG_LEVEL}"
 		done
 	fi
 	echo "stopping server ${_PID}"
     kill -SIGTERM ${_PID}
     sleep 2
+    if [[ -f "${DB_DUMP_FILE}.gz" ]]; then
+        gunzip "${DB_DUMP_FILE}.gz"
+    fi
     if [[ -f "${DB_DUMP_FILE}" ]]; then
         echo "${DB_DUMP_FILE} found, restore DB from file..."
-        _envsubst ${DB_DUMP_FILE}
-        slapadd -l /tmp/subst.ldif -F ${SLAPD_CONF_DIR}
+        slapadd -c -l `_envsubst ${DB_DUMP_FILE}` -F ${SLAPD_CONF_DIR} -d "${SLAPD_LOG_LEVEL}"
         restore_state=$?
         echo "restore finished with code ${restore_state}"
 
