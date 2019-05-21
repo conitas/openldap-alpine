@@ -1,16 +1,21 @@
 #!/bin/sh
 
+# escape url
 _escurl() { echo $1 | sed 's|/|%2F|g' ;}
+# substitute environment variables in file
 _envsubst() { envsubst < $1 > ${SUBST_FILE}; echo ${SUBST_FILE} ; }
 
 host=$(hostname)
+# temp file for substitutions
 SUBST_FILE=/tmp/subst.ldif
 SLAPD_CONF_DIR=/etc/openldap/slapd.d
+# Socket name for IPC
 SLAPD_IPC_SOCKET=/run/openldap/ldapi
+DB_DUMP_FILE=/ldap/dump/dbdump.ldif
+SLAPD_CONF=/etc/openldap/slapd.conf
+
 if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
 	FIRST_START=1
-	DB_DUMP_FILE=/ldap/dump/dbdump.ldif
-	SLAPD_CONF=/etc/openldap/slapd.conf
 	if [[ ! -f ${SLAPD_CONF} ]];then
 	 touch ${SLAPD_CONF}
 	fi
@@ -52,6 +57,7 @@ if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
 		done
 	fi
 
+    # ssl certs and keys
     if [[ -d "/ldap/pki" ]]  &&  [[ "$(ls -A '/ldap/pki')" ]]; then
         CA_CERT=/ldap/pki/ca_cert.pem
         SSL_KEY=/ldap/pki/key.pem
@@ -66,7 +72,7 @@ if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
         echo "TLSCipherSuite HIGH:-SSLv2:-SSLv3" >>  "$SLAPD_CONF"
     fi
 
-    #rootpw $config_rootpw_hash
+
 	cat <<-EOF >> "$SLAPD_CONF"
 pidfile		/run/openldap/slapd.pid
 argsfile	/run/openldap/slapd.args
@@ -143,6 +149,7 @@ o: ${SLAPD_ORGANIZATION}
 	echo "stopping server ${_PID}"
     kill -SIGTERM ${_PID}
     sleep 2
+    # restore dump if available
     if [[ -f "${DB_DUMP_FILE}.gz" ]]; then
         gunzip "${DB_DUMP_FILE}.gz"
     fi

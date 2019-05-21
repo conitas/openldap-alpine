@@ -1,6 +1,10 @@
 # openldap-alpine
 Openldap Docker Image Based on Alpine Linux
 
+Enabled modules:
+- MDB Backend
+- PBKDF2 Password Hash
+- MemberOf Overlay 
 
 # Test pbkdf2
 ```
@@ -8,15 +12,33 @@ Openldap Docker Image Based on Alpine Linux
 ```
 
 # LDAP folder
+Here are some config options to enable during first startup. Environment variables may be used in ldif files and will be replaced before import.
+## Default config
+LDAP folder contains predefined configs (_ldif/_). Here are memberof and password policies preconfigured
+## User config
+User defined ldifs may be placed into (_userldif/_)    
+ 
+## Custom schema 
+Additional schema elements may be placed into _schema/_ folder.
+
+## ssl config
+here should be placed ssl certificates and keys for secured connection
+- __ca_cert.pem__ - CA Certificate
+- __cert.pem__ - Server Certificate 
+- __key.pem__ - Server private key
+
+## dump
+Here can be placed a dump ldif to be restored on first start. Dump file should be named __dbdump.ldif__ and may be compressed with gzip (__dbdump.ldif.gz__).  
+
 
 # .env
 
 | Variable | Sample Value | Description |
 | :----------- | :------------- | :----------------- |
-|SLAPD_SUFFIX | dc=example,dc=org | |
-|SLAPD_ORGANIZATION | Example | |
-|SLAPD_DOMAIN|example||
-|SLAPD_ROOTDN|cn=root,dc=example,dc=org||
+|SLAPD_SUFFIX | dc=example,dc=org | Main suffix |
+|SLAPD_ORGANIZATION | Example | Organization |
+|SLAPD_DOMAIN|example| domain |
+|SLAPD_ROOTDN|cn=root,dc=example,dc=org| Root DN|
 |SLAPD_ROOTPW|Secret||
 |SLAPD_LOG_LEVEL|any | see table 1|
 |LDAPADD_DEBUG_LEVEL | 1 | see table 2 |
@@ -49,3 +71,4 @@ Openldap Docker Image Based on Alpine Linux
 |4|Arguments|
 |32|Filters|
 |128|Access control| 
+
