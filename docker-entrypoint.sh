@@ -9,6 +9,7 @@ host=$(hostname)
 # temp file for substitutions
 SUBST_FILE=/tmp/subst.ldif
 SLAPD_CONF_DIR=/etc/openldap/slapd.d
+SLAPD_DATA_DIR=/var/lib/openldap/openldap-data
 # Socket name for IPC
 SLAPD_IPC_SOCKET=/run/openldap/ldapi
 DB_DUMP_FILE=/ldap/dump/dbdump.ldif
@@ -24,8 +25,8 @@ if [[ ! -d ${SLAPD_CONF_DIR} ]]; then
 	echo "Configuring OpenLDAP via slapd.d"
 	mkdir -p ${SLAPD_CONF_DIR}
 	chmod -R 750 ${SLAPD_CONF_DIR}
-	mkdir -p /var/lib/openldap/openldap-data
-    chmod -R 750 /var/lib/openldap/openldap-data
+	mkdir -p ${SLAPD_DATA_DIR}
+	chmod -R 750 ${SLAPD_DATA_DIR}
 
 	echo "SLAPD_ROOTDN = $SLAPD_ROOTDN"
 	if [[ -z "$SLAPD_ROOTDN" ]]; then
@@ -89,7 +90,7 @@ suffix "${SLAPD_SUFFIX}"
 rootdn "${SLAPD_ROOTDN}"
 rootpw ${rootpw_hash}
 password-hash {PBKDF2-SHA512}
-directory  /var/lib/openldap/openldap-data
+directory  ${SLAPD_DATA_DIR}
 	EOF
 
 
@@ -107,7 +108,7 @@ o: ${SLAPD_ORGANIZATION}
     slapadd  -c -F ${SLAPD_CONF_DIR}  -l "${SLAPD_CONF_DIR}/domain.ldif" -n1
     chown -R ldap:ldap ${SLAPD_CONF_DIR}
     chown -R ldap:ldap /run/openldap/
-    chown -R ldap:ldap /var/lib/openldap/openldap-data
+    chown -R ldap:ldap ${SLAPD_DATA_DIR}
 
 
     echo "Starting slapd for first configuration"
