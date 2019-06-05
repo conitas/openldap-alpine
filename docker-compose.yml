@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+
+  ldap:
+    image: itasgmbhde/openldap-alpine
+    build:
+      context: .
+    ports:
+      - 8389:389
+      - 8636:636
+#    volumes:
+#     - ldap_data:/var/lib/openldap/openldap-data
+    env_file:
+      - .env
+
+
+#volumes:
+#  ldap_data:
