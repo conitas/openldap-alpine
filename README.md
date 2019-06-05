@@ -6,6 +6,18 @@ Enabled modules:
 - PBKDF2 Password Hash
 - MemberOf Overlay 
 
+# Data und Config Dirs
+Configuration directory will be created on first run by entrypoint.sh and placed to `/etc/openldap/slapd.d`.
+
+Data directory will be created on fist run by entrypoint.sh and placed to `/var/lib/openldap/openldap-data`.
+
+Both should be mounted and backed up volumes e.g:
+
+```
+ docker run -it --rm  -p 8389:389 -v /opt/slapd-conf:/etc/openldap/slapd.d -v /opt/slapd-data:/var/lib/openldap/openldap-data itasgmbhde/openldap-alpine
+```
+
+
 # Test pbkdf2
 ```
  slappasswd -o module-load=pw-pbkdf2.so -h {PBKDF2-SHA512} -s secret
