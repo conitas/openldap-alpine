@@ -1,4 +1,4 @@
-FROM alpine:3.9
+FROM alpine:3.10
 
 RUN  apk update \
   && apk add gettext openldap openldap-clients openldap-back-mdb openldap-passwd-pbkdf2 openldap-overlay-memberof openldap-overlay-ppolicy openldap-overlay-refint \
