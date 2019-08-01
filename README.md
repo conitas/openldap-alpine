@@ -42,6 +42,8 @@ here should be placed ssl certificates and keys for secured connection
 ## dump
 Here can be placed a dump ldif to be restored on first start. Dump file should be named __dbdump.ldif__ and may be compressed with gzip (__dbdump.ldif.gz__).  
 
+## Volumes
+Mount external data volume to `/var/lib/openldap/openldap-data`.  
 
 # .env
 
