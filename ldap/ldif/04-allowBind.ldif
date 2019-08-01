@@ -1,0 +1,8 @@
+dn: olcDatabase={1}mdb,cn=config
+changetype: modify
+add: olcAccess
+olcAccess: {0}to attrs=userPassword by self write by anonymous auth by dn="${SLAPD_ROOTDN}" write by * none
+
+# Optionally Allow access to attributes and subtrees
+# olcAccess: {1}to dn.base="" by * read
+# olcAccess: {2}to * by self write by dn="${SLAPD_ROOTDN}" write by * read
